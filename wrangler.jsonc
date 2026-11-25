@@ -8,12 +8,12 @@
   // Interfaz web estática (public/). Las rutas /api/* las atiende el Worker.
   "assets": { "directory": "./public", "binding": "ASSETS" },
 
-  // Crea la base con: npx wrangler d1 create flight-deals  → pega aquí el database_id.
+  // Base D1 "flight-deals".
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "flight-deals",
-      "database_id": "REEMPLAZAR_CON_TU_DATABASE_ID",
+      "database_id": "970db550-d3de-4641-ade1-bc87726f1651",
       "migrations_dir": "migrations"
     }
   ],

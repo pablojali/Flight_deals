@@ -21,10 +21,14 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-function isAdmin(req: Request, env: Env): boolean {
-  const header = req.headers.get("Authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  return Boolean(env.ADMIN_TOKEN) && safeEqual(token, env.ADMIN_TOKEN!);
+/** null si está autorizado; si no, la respuesta de error con el motivo. */
+function checkAdmin(req: Request, env: Env): Response | null {
+  const expected = (env.ADMIN_TOKEN ?? "").trim();
+  if (!expected) return json({ error: "ADMIN_TOKEN no está configurado en el Worker" }, 503);
+  const header = (req.headers.get("Authorization") ?? "").trim();
+  if (!/^Bearer\s+/i.test(header)) return json({ error: "falta la cabecera Authorization: Bearer <token>" }, 401);
+  const token = header.replace(/^Bearer\s+/i, "").trim();
+  return safeEqual(token, expected) ? null : json({ error: "no autorizado: el token no coincide" }, 401);
 }
 
 function presentDeal(d: DealRow) {
@@ -54,12 +58,14 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
   }
 
   if (path === "/api/runs" && req.method === "GET") {
-    if (!isAdmin(req, env)) return json({ error: "no autorizado" }, 401);
+    const denied = checkAdmin(req, env);
+    if (denied) return denied;
     return json({ runs: await lastRuns(env.DB) });
   }
 
   if (path === "/api/scan" && req.method === "POST") {
-    if (!isAdmin(req, env)) return json({ error: "no autorizado" }, 401);
+    const denied = checkAdmin(req, env);
+    if (denied) return denied;
     const requested = parseOrigins(url.searchParams.get("origins") ?? "");
     const allowed = new Set(parseOrigins(env.ORIGINS));
     const origins = requested.filter((o) => allowed.has(o));

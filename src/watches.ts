@@ -1,4 +1,4 @@
-import { collectMatches, isExpired, pickAlerts, planQueries, WATCH_LIMITS } from "./core/watch";
+import { buildCalendar, collectMatches, isExpired, pickAlerts, planQueries, WATCH_LIMITS } from "./core/watch";
 import { formatWatchMessage, sendTelegram } from "./notify/telegram";
 import { makeSource } from "./scan";
 import { SourceError, type FlightSource } from "./sources/types";
@@ -32,7 +32,7 @@ export async function checkWatch(env: Env, w: store.Watch, source: FlightSource,
 
   const matches = collectMatches(offers, w);
   const error = errors.length ? errors.slice(0, 3).join(" | ") : null;
-  await store.saveCheck(env.DB, w.id, matches, error, now, WATCH_LIMITS.keepResults);
+  await store.saveCheck(env.DB, w.id, matches, error, now, WATCH_LIMITS.keepResults, buildCalendar(offers, w));
 
   let alerts = 0;
   if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID && matches.length) {

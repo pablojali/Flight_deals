@@ -8,7 +8,7 @@ Dos formas de usarlo, ambas con avisos por Telegram:
 - **Mis alertas**: defines salida (aeropuertos locales y/o hubs como BCN, MAD, PAR), destino (o *cualquiera*),
   fechas de ida y vuelta con ± días de margen y, opcionalmente, un precio máximo. Hay dos tipos:
   *Europa low-cost* (solo directos) y *Larga distancia* (con escalas, p. ej. `BUE` para Argentina).
-  Se comprueban cada hora; avisa cuando un vuelo baja de tu máximo o, sin máximo, cuando aparece un nuevo mínimo.
+  Cada alerta incluye un **calendario de precios por día** (el más barato saliendo cada día, para estancias parecidas). Se comprueban cada hora; avisa cuando un vuelo baja de tu máximo o, sin máximo, cuando aparece un nuevo mínimo.
 - **Radar automático**: sin configurar nada, aprende el **precio normal** de cada ruta directa y avisa cuando
   un viaje cae claramente por debajo, siempre que el **horario sea aprovechable**.
 

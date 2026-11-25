@@ -218,3 +218,58 @@ export function pickAlerts(
 export function isExpired(w: WatchInput, today: string): boolean {
   return addDays(w.departDate, w.departFlex) < today;
 }
+
+export interface CalendarDay {
+  date: string; // salida (fecha local)
+  price: number;
+  nights: number;
+  returnAt: string;
+  airline: string;
+  stops: number;
+  origin: string;
+  destination: string;
+}
+
+export interface PriceCalendar {
+  months: string[];
+  nightsMin: number;
+  nightsMax: number;
+  days: CalendarDay[];
+}
+
+/**
+ * Calendario de precios: el viaje más barato por día de salida, en los meses de ida
+ * de la alerta, para estancias de duración parecida a la buscada
+ * (± el margen total de la alerta, mínimo ±2 noches). Usa las ofertas ya descargadas,
+ * así que no consume consultas extra.
+ */
+export function buildCalendar(offers: Offer[], w: WatchInput): PriceCalendar {
+  const months = monthsInWindow(w.departDate, w.departFlex);
+  const target = Math.round((Date.parse(`${w.returnDate}T00:00:00Z`) - Date.parse(`${w.departDate}T00:00:00Z`)) / 86_400_000);
+  const tol = Math.max(2, w.departFlex + w.returnFlex);
+  const nightsMin = Math.max(0, target - tol);
+  const nightsMax = target + tol;
+
+  const best = new Map<string, CalendarDay>();
+  for (const o of offers) {
+    const date = localDate(o.departAt);
+    if (!months.includes(date.slice(0, 7))) continue;
+    if (o.transfers > w.maxStops || o.returnTransfers > w.maxStops) continue;
+    const nights = Math.round((Date.parse(`${localDate(o.returnAt)}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / 86_400_000);
+    if (nights < nightsMin || nights > nightsMax) continue;
+    const prev = best.get(date);
+    if (prev && prev.price <= o.price) continue;
+    best.set(date, {
+      date,
+      price: o.price,
+      nights,
+      returnAt: o.returnAt,
+      airline: o.airline,
+      stops: Math.max(o.transfers, o.returnTransfers),
+      origin: o.origin,
+      destination: o.destination,
+    });
+  }
+  const days = [...best.values()].sort((a, b) => a.date.localeCompare(b.date));
+  return { months, nightsMin, nightsMax, days };
+}

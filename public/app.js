@@ -176,8 +176,103 @@ function watchCard(w) {
   $(".checked", node).textContent = timeAgo(w.lastCheckedAt);
   $('[data-act="toggle"]', node).textContent = w.active ? "Pausar" : "Activar";
 
+  renderCalendar(card, w);
   loadSparkline(card, w.id);
   return node;
+}
+
+const MONTH_FMT = new Intl.DateTimeFormat("es", { month: "long", year: "numeric", timeZone: "UTC" });
+
+function shiftDay(date, days) {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Calendario de precios: el viaje más barato por día de salida, coloreado por quintiles. */
+function renderCalendar(card, w) {
+  const cal = w.calendar;
+  const box = $(".cal-box", card);
+  const days = cal?.days ?? [];
+  if (!days.length) {
+    $(".cal-sum", box).textContent = w.lastCheckedAt ? "· sin datos todavía" : "";
+    $(".cal-note", box).textContent =
+      "Aún no hay precios guardados para estas fechas. Se irá rellenando con cada comprobación.";
+    $(".cal-legend", box).hidden = true;
+    return;
+  }
+
+  // Quintiles por posición: 5 = el 20 % más barato.
+  const sorted = days.map((d) => d.price).sort((a, b) => a - b);
+  const bin = (price) => 5 - Math.min(4, Math.floor((sorted.indexOf(price) / sorted.length) * 5));
+  const min = sorted[0];
+  const byDate = new Map(days.map((d) => [d.date, d]));
+  const winFrom = shiftDay(w.departDate, -w.departFlex);
+  const winTo = shiftDay(w.departDate, w.departFlex);
+  const today = new Date().toISOString().slice(0, 10);
+
+  $(".cal-sum", box).textContent = `· desde ${min} €`;
+  $(".cal-note", box).textContent =
+    `Precio ida y vuelta más barato saliendo cada día, para estancias de ${cal.nightsMin}–${cal.nightsMax} noches${w.maxStops === 0 ? ", solo directos" : `, hasta ${stopsText(w.maxStops)}`}. Pulsa un día para verlo en Google Flights.`;
+
+  const wrap = $(".cal-months", box);
+  wrap.replaceChildren();
+  for (const month of cal.months) {
+    const m = document.createElement("div");
+    m.className = "cal-month";
+    const h = document.createElement("h4");
+    const label = MONTH_FMT.format(new Date(`${month}-01T00:00:00Z`));
+    h.textContent = label.charAt(0).toUpperCase() + label.slice(1); // "Diciembre de 2026"
+    const grid = document.createElement("div");
+    grid.className = "cal-grid";
+    for (const wd of ["L", "M", "X", "J", "V", "S", "D"]) {
+      const c = document.createElement("span");
+      c.className = "cal-wd";
+      c.textContent = wd;
+      grid.append(c);
+    }
+    const first = new Date(`${month}-01T00:00:00Z`);
+    const offset = (first.getUTCDay() + 6) % 7; // lunes = 0
+    for (let i = 0; i < offset; i++) grid.append(document.createElement("span"));
+    const daysInMonth = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+
+    for (let n = 1; n <= daysInMonth; n++) {
+      const date = `${month}-${String(n).padStart(2, "0")}`;
+      const d = byDate.get(date);
+      const cell = document.createElement(d ? "a" : "span");
+      cell.className = "cal-day";
+      if (date >= winFrom && date <= winTo) cell.classList.add("in-window");
+      const num = document.createElement("span");
+      num.className = "cal-n";
+      num.textContent = String(n);
+      cell.append(num);
+      if (d) {
+        cell.classList.add(`b${bin(d.price)}`);
+        const price = document.createElement("span");
+        price.className = "cal-p";
+        price.textContent = `${d.price}€`;
+        cell.append(price);
+        if (d.price === min) {
+          cell.classList.add("is-min");
+          const tag = document.createElement("span");
+          tag.className = "cal-min";
+          tag.textContent = "mín";
+          cell.append(tag);
+        }
+        const info = `${fmtDay(d.date)} → ${fmtDay(d.returnAt)} · ${d.nights} noche${d.nights === 1 ? "" : "s"} · ${d.price} € · ${d.origin}→${d.destination} · ${d.airline || "—"} · ${stopsText(d.stops)}`;
+        cell.title = info;
+        cell.setAttribute("aria-label", info);
+        cell.href = googleFlights(d.origin, d.destination, d.date, d.returnAt);
+        cell.target = "_blank";
+        cell.rel = "noopener";
+      } else if (date < today) {
+        cell.classList.add("is-past");
+      }
+      grid.append(cell);
+    }
+    m.append(h, grid);
+    wrap.append(m);
+  }
 }
 
 function resultRow(r) {

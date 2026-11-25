@@ -13,6 +13,12 @@
   --warn-bg: #fff4e0;
   --warn-text: #8a4b00;
   --radius: 14px;
+  /* Calendario: rampa secuencial azul, b1 = más caro … b5 = más barato */
+  --b1: #cce3fd; --b1-t: #14171f;
+  --b2: #9dc8f7; --b2-t: #14171f;
+  --b3: #6aabf1; --b3-t: #14171f;
+  --b4: #2370cd; --b4-t: #ffffff;
+  --b5: #0f4a96; --b5-t: #ffffff;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -30,6 +36,12 @@
     --danger: #ff7b6b;
     --warn-bg: #3a2a10;
     --warn-text: #ffcf85;
+    /* En oscuro lo caro se funde con el fondo y lo barato destaca (más claro) */
+    --b1: #0e3d7e; --b1-t: #e8eaf0;
+    --b2: #1757ac; --b2-t: #ffffff;
+    --b3: #2370cd; --b3-t: #ffffff;
+    --b4: #519ced; --b4-t: #0b1220;
+    --b5: #9dc8f7; --b5-t: #0b1220;
   }
 }
 
@@ -184,6 +196,38 @@ input, select {
 .spark { width: 120px; height: 36px; flex: 0 0 auto; }
 .spark polyline { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .spark-caption { margin: -4px 0 0; font-size: 0.78rem; }
+
+/* ─── calendario de precios ─── */
+.cal-box { border-top: 1px solid var(--border); padding-top: 8px; }
+.cal-box summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+.cal-note { font-size: 0.8rem; margin: 8px 0; }
+.cal-legend { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; }
+.cal-legend .sw { width: 18px; height: 12px; border-radius: 3px; }
+.cal-key { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; margin-left: 10px; }
+.sw-window { width: 14px; height: 12px; border-radius: 3px; border: 2px solid var(--text); }
+.cal-months { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.cal-month h4 { margin: 0 0 6px; font-size: 0.85rem; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-wd { text-align: center; font-size: 0.7rem; color: var(--muted); padding-bottom: 2px; }
+.cal-day {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 42px; border-radius: 6px; background: var(--surface-2); color: var(--muted);
+  text-decoration: none; font-size: 0.7rem; line-height: 1.15; border: 2px solid transparent;
+}
+.cal-day.is-past { opacity: 0.35; }
+.cal-day.in-window { border-color: var(--text); }
+.cal-n { font-size: 0.68rem; opacity: 0.85; }
+.cal-p { font-weight: 700; font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+.cal-min {
+  position: absolute; top: -6px; right: -4px; font-size: 0.58rem; font-weight: 700;
+  padding: 0 4px; border-radius: 6px; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+}
+a.cal-day:hover, a.cal-day:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.b1, .sw.b1 { background: var(--b1); color: var(--b1-t); }
+.b2, .sw.b2 { background: var(--b2); color: var(--b2-t); }
+.b3, .sw.b3 { background: var(--b3); color: var(--b3-t); }
+.b4, .sw.b4 { background: var(--b4); color: var(--b4-t); }
+.b5, .sw.b5 { background: var(--b5); color: var(--b5-t); }
 
 .results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .result {

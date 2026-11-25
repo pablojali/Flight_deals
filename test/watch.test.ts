@@ -127,3 +127,22 @@ describe("integración con la fuente sintética", () => {
     expect(isExpired(europe, "2026-12-08")).toBe(true);
   });
 });
+
+describe("buildCalendar", () => {
+  it("guarda el más barato por día de salida con estancias parecidas", async () => {
+    const { buildCalendar } = await import("../src/core/watch");
+    // europe: 05/12 → 08/12 (3 noches), márgenes 2+1 → tolerancia ±3 noches → 0..6
+    const offers = [
+      offer({ price: 90, departAt: "2026-12-10T07:00:00+01:00", returnAt: "2026-12-13T20:00:00+00:00" }),
+      offer({ price: 70, departAt: "2026-12-10T18:00:00+01:00", returnAt: "2026-12-12T20:00:00+00:00" }),
+      offer({ price: 40, departAt: "2026-12-11T07:00:00+01:00", returnAt: "2026-12-25T20:00:00+00:00" }), // 14 noches: fuera
+      offer({ price: 30, departAt: "2026-12-12T07:00:00+01:00", returnAt: "2026-12-14T20:00:00+00:00", transfers: 1 }), // escala
+      offer({ price: 55, departAt: "2027-01-03T07:00:00+01:00", returnAt: "2027-01-05T20:00:00+00:00" }), // otro mes
+    ];
+    const cal = buildCalendar(offers, europe);
+    expect(cal.months).toEqual(["2026-12"]);
+    expect([cal.nightsMin, cal.nightsMax]).toEqual([0, 6]);
+    expect(cal.days).toHaveLength(1);
+    expect(cal.days[0]).toMatchObject({ date: "2026-12-10", price: 70, nights: 2, stops: 0 });
+  });
+});

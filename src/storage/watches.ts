@@ -1,4 +1,4 @@
-import type { WatchInput, WatchKind, WatchMatch } from "../core/watch";
+import type { PriceCalendar, WatchInput, WatchKind, WatchMatch } from "../core/watch";
 import { isoDay } from "./db";
 
 export interface WatchRow {
@@ -18,6 +18,7 @@ export interface WatchRow {
   last_checked_at: string | null;
   last_error: string | null;
   results_json: string;
+  calendar_json: string;
 }
 
 export interface Watch extends WatchInput {
@@ -27,16 +28,24 @@ export interface Watch extends WatchInput {
   lastCheckedAt: string | null;
   lastError: string | null;
   results: WatchMatch[];
+  calendar: PriceCalendar | null;
 }
 
 const csv = (s: string) => (s ? s.split(",").filter(Boolean) : []);
 
 export function rowToWatch(r: WatchRow): Watch {
   let results: WatchMatch[] = [];
+  let calendar: PriceCalendar | null = null;
   try {
     results = JSON.parse(r.results_json) as WatchMatch[];
   } catch {
     results = [];
+  }
+  try {
+    const c = JSON.parse(r.calendar_json ?? "{}") as Partial<PriceCalendar>;
+    calendar = Array.isArray(c.days) && Array.isArray(c.months) ? (c as PriceCalendar) : null;
+  } catch {
+    calendar = null;
   }
   return {
     id: r.id,
@@ -55,6 +64,7 @@ export function rowToWatch(r: WatchRow): Watch {
     lastCheckedAt: r.last_checked_at,
     lastError: r.last_error,
     results,
+    calendar,
   };
 }
 
@@ -102,7 +112,7 @@ export async function updateWatch(db: D1Database, id: number, w: WatchInput): Pr
       .prepare(
         `UPDATE watches SET name = ?1, kind = ?2, origins = ?3, destinations = ?4, depart_date = ?5, depart_flex = ?6,
            return_date = ?7, return_flex = ?8, max_price = ?9, max_stops = ?10,
-           results_json = '[]', last_checked_at = NULL, last_error = NULL
+           results_json = '[]', calendar_json = '{}', last_checked_at = NULL, last_error = NULL
          WHERE id = ?11`,
       )
       .bind(...inputParams(w), id),
@@ -149,11 +159,12 @@ export async function saveCheck(
   error: string | null,
   now: Date,
   keep: number,
+  calendar: PriceCalendar,
 ): Promise<void> {
   const stmts = [
     db
-      .prepare(`UPDATE watches SET last_checked_at = ?2, last_error = ?3, results_json = ?4 WHERE id = ?1`)
-      .bind(id, now.toISOString(), error, JSON.stringify(matches.slice(0, keep))),
+      .prepare(`UPDATE watches SET last_checked_at = ?2, last_error = ?3, results_json = ?4, calendar_json = ?5 WHERE id = ?1`)
+      .bind(id, now.toISOString(), error, JSON.stringify(matches.slice(0, keep)), JSON.stringify(calendar)),
   ];
   const cheapest = matches[0];
   if (cheapest) {

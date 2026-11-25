@@ -1,6 +1,7 @@
 import { MODES, parseOrigins } from "./config";
 import { googleFlightsLink } from "./core/links";
 import { sendTelegram } from "./notify/telegram";
+import { searchPlaces } from "./places";
 import { validateWatch } from "./core/watch";
 import { makeSource, runScan } from "./scan";
 import { isoDay, lastRuns, listDeals, routeHistory, type DealRow } from "./storage/db";
@@ -42,8 +43,12 @@ function presentDeal(d: DealRow) {
   return { ...d, error_fare: d.error_fare === 1, google_flights: googleFlightsLink(d.origin, d.destination, d.depart_at, d.return_at) };
 }
 
-async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
+async function handleApi(req: Request, env: Env, url: URL, ctx?: ExecutionContext): Promise<Response> {
   const path = url.pathname;
+
+  if (path === "/api/places" && req.method === "GET") {
+    return json({ places: await searchPlaces(url.searchParams.get("q") ?? "", ctx) });
+  }
 
   if (path === "/api/config" && req.method === "GET") {
     return json({ origins: parseOrigins(env.ORIGINS), modes: Object.fromEntries(Object.entries(MODES).map(([k, v]) => [k, v.label])) });
@@ -164,11 +169,11 @@ async function handleWatches(req: Request, env: Env, path: string): Promise<Resp
 }
 
 export default {
-  async fetch(req, env): Promise<Response> {
+  async fetch(req, env, ctx): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname.startsWith("/api/")) {
       try {
-        return await handleApi(req, env, url);
+        return await handleApi(req, env, url, ctx);
       } catch (e) {
         console.error(JSON.stringify({ event: "api_error", path: url.pathname, error: String(e) }));
         return json({ error: "error interno" }, 500);

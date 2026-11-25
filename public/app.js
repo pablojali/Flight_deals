@@ -264,6 +264,118 @@ async function testTelegram() {
   }
 }
 
+// ───────────────────────── buscador de códigos IATA ─────────────────────────
+
+function addCode(input, code) {
+  const codes = input.value.split(/[\s,;]+/).map((c) => c.trim().toUpperCase()).filter(Boolean);
+  if (!codes.includes(code)) codes.push(code);
+  input.value = codes.join(", ");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function placeLabel(p) {
+  if (p.type === "city") return { main: p.name, sub: `${p.country} · todos sus aeropuertos` };
+  return { main: p.name, sub: [p.city && p.city !== p.name ? p.city : "", p.country].filter(Boolean).join(", ") };
+}
+
+function attachPlaceSearch(box) {
+  const q = $(".place-q", box);
+  const list = $(".place-results", box);
+  const target = document.getElementById(box.dataset.target);
+  let timer = 0;
+  let seq = 0;
+
+  const close = () => {
+    list.hidden = true;
+    list.replaceChildren();
+  };
+
+  const choose = (code) => {
+    addCode(target, code);
+    q.value = "";
+    close();
+    q.focus();
+  };
+
+  q.addEventListener("input", () => {
+    clearTimeout(timer);
+    const term = q.value.trim();
+    if (term.length < 2) return close();
+    timer = setTimeout(async () => {
+      const mine = ++seq;
+      try {
+        const { places } = await api(`/api/places?q=${encodeURIComponent(term)}`);
+        if (mine !== seq) return; // llegó una búsqueda más reciente
+        list.replaceChildren();
+        if (!places.length) {
+          const li = document.createElement("li");
+          li.className = "place-none";
+          li.textContent = "Sin resultados. Prueba con otro nombre o en inglés.";
+          list.append(li);
+        }
+        for (const p of places) {
+          const li = document.createElement("li");
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "place-opt";
+          const code = document.createElement("span");
+          code.className = "place-code";
+          code.textContent = p.code;
+          const txt = document.createElement("span");
+          const { main, sub } = placeLabel(p);
+          const b = document.createElement("strong");
+          b.textContent = main;
+          const small = document.createElement("small");
+          small.textContent = sub;
+          txt.append(b, small);
+          btn.append(code, txt);
+          btn.addEventListener("click", () => choose(p.code));
+          li.append(btn);
+          list.append(li);
+        }
+        list.hidden = false;
+      } catch {
+        close();
+      }
+    }, 220);
+  });
+
+  q.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault(); // no enviar el formulario
+      const first = $(".place-opt", list);
+      if (first) first.click();
+    } else if (ev.key === "Escape") {
+      close();
+    } else if (ev.key === "ArrowDown") {
+      const first = $(".place-opt", list);
+      if (first) {
+        ev.preventDefault();
+        first.focus();
+      }
+    }
+  });
+
+  list.addEventListener("keydown", (ev) => {
+    const opts = [...list.querySelectorAll(".place-opt")];
+    const i = opts.indexOf(document.activeElement);
+    if (ev.key === "ArrowDown" && i < opts.length - 1) {
+      ev.preventDefault();
+      opts[i + 1].focus();
+    } else if (ev.key === "ArrowUp") {
+      ev.preventDefault();
+      (i > 0 ? opts[i - 1] : q).focus();
+    } else if (ev.key === "Escape") {
+      close();
+      q.focus();
+    }
+  });
+
+  document.addEventListener("click", (ev) => {
+    if (!box.contains(ev.target)) close();
+  });
+}
+
 // ───────────────────────── formulario ─────────────────────────
 
 function setKind(kind) {
@@ -451,6 +563,7 @@ async function init() {
     // Filtros y aeropuertos quedan vacíos; el resto funciona.
   }
   buildForm();
+  for (const box of document.querySelectorAll(".place-search")) attachPlaceSearch(box);
 
   $("#tab-watches").addEventListener("click", () => showTab("watches"));
   $("#tab-radar").addEventListener("click", () => showTab("radar"));

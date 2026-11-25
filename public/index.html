@@ -53,20 +53,29 @@
             <label><input type="radio" name="kind" value="longhaul"><span>Larga distancia<small>con escalas</small></span></label>
           </div>
 
-          <label class="field">Nombre <span class="muted">(opcional)</span>
+          <label class="field"><span>Nombre <span class="muted">(opcional)</span></span>
             <input type="text" name="name" maxlength="60" placeholder="p. ej. Navidad en Argentina">
           </label>
 
           <fieldset class="field">
             <legend>Salida desde</legend>
             <div class="chips" id="origin-chips"></div>
-            <input type="text" name="extraOrigins" placeholder="Otros aeropuertos: BCN, MAD, PAR…" aria-label="Otros aeropuertos de salida">
+            <input type="text" name="extraOrigins" id="extra-origins" placeholder="Otros aeropuertos: BCN, MAD, PAR…" aria-label="Otros aeropuertos de salida">
+            <div class="place-search" data-target="extra-origins">
+              <input type="search" class="place-q" placeholder="🔍 Buscar por ciudad: Barcelona…" aria-label="Buscar aeropuerto de salida por nombre" autocomplete="off">
+              <ul class="place-results" hidden></ul>
+            </div>
           </fieldset>
 
-          <label class="field">Destino
+          <div class="field">
+            <label for="dest-input">Destino</label>
             <input type="text" name="destinations" id="dest-input" autocomplete="off">
+            <div class="place-search" data-target="dest-input">
+              <input type="search" class="place-q" placeholder="🔍 Buscar ciudad o país: Buenos Aires…" aria-label="Buscar destino por nombre" autocomplete="off">
+              <ul class="place-results" hidden></ul>
+            </div>
             <small class="hint" id="dest-hint"></small>
-          </label>
+          </div>
 
           <div class="grid-2">
             <fieldset class="field">

@@ -89,6 +89,13 @@ input, select {
 .row.end { justify-content: flex-end; }
 .error { color: var(--danger); font-size: 0.9rem; margin: 8px 0 0; }
 
+.notice {
+  margin: -4px 0 16px; padding: 10px 12px; border-radius: 10px; font-size: 0.9rem;
+  border: 1px solid var(--border); background: var(--surface); white-space: pre-line;
+}
+.notice.ok { border-color: var(--good); }
+.notice.bad { border-color: var(--danger); }
+
 .panel {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 18px;

@@ -47,8 +47,10 @@ export async function sendTelegram(
     body: JSON.stringify({ chat_id: chatId, text: html, parse_mode: "HTML", disable_web_page_preview: true }),
   });
   if (!res.ok) {
+    // Telegram explica el motivo en `description` (p. ej. "Bad Request: chat not found").
     // No incluimos el token en el mensaje de error.
-    throw new Error(`Telegram HTTP ${res.status}`);
+    const body = (await res.json().catch(() => ({}))) as { description?: string };
+    throw new Error(`Telegram HTTP ${res.status}${body.description ? `: ${body.description}` : ""}`);
   }
 }
 

@@ -1,5 +1,6 @@
 import { MODES, parseOrigins } from "./config";
 import { googleFlightsLink } from "./core/links";
+import { sendTelegram } from "./notify/telegram";
 import { validateWatch } from "./core/watch";
 import { makeSource, runScan } from "./scan";
 import { isoDay, lastRuns, listDeals, routeHistory, type DealRow } from "./storage/db";
@@ -8,7 +9,7 @@ import type { Env } from "./types";
 import { checkWatch, runWatches } from "./watches";
 
 /** Cron de alertas personalizadas (debe coincidir con wrangler.jsonc). */
-const WATCH_CRON = "47 */2 * * *";
+const WATCH_CRON = "7 * * * *";
 
 const IATA = /^[A-Z]{3}$/;
 
@@ -76,6 +77,24 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     const allowed = new Set(parseOrigins(env.ORIGINS));
     const origins = requested.filter((o) => allowed.has(o));
     return json(await runScan(env, { origins: origins.length ? origins : undefined }));
+  }
+
+  if (path === "/api/telegram/test" && req.method === "POST") {
+    const denied = checkAdmin(req, env);
+    if (denied) return denied;
+    if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
+      return json({ error: "faltan los secretos TELEGRAM_BOT_TOKEN y/o TELEGRAM_CHAT_ID en el Worker" }, 503);
+    }
+    try {
+      await sendTelegram(
+        env.TELEGRAM_BOT_TOKEN.trim(),
+        env.TELEGRAM_CHAT_ID.trim(),
+        "✅ <b>Flight Deals</b>: el bot funciona. Aquí te llegarán las alertas de vuelos.",
+      );
+      return json({ ok: true });
+    } catch (e) {
+      return json({ error: e instanceof Error ? e.message : String(e) }, 502);
+    }
   }
 
   if (path === "/api/watches" || path.startsWith("/api/watches/")) {

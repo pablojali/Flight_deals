@@ -126,7 +126,7 @@ function renderWatches() {
   list.replaceChildren();
   const active = state.watches.filter((w) => w.active).length;
   $("#watches-status").textContent = state.watches.length
-    ? `${state.watches.length} alerta${state.watches.length > 1 ? "s" : ""} · ${active} activa${active === 1 ? "" : "s"} · se comprueban cada 2 h`
+    ? `${state.watches.length} alerta${state.watches.length > 1 ? "s" : ""} · ${active} activa${active === 1 ? "" : "s"} · se comprueban cada hora`
     : "Aún no tienes alertas. Crea una y el bot te avisará por Telegram.";
   for (const w of state.watches) list.append(watchCard(w));
 }
@@ -235,6 +235,32 @@ async function watchAction(ev) {
     alert(`No se pudo completar: ${e.message}`);
     btn.disabled = false;
     btn.textContent = label;
+  }
+}
+
+async function testTelegram() {
+  const btn = $("#tg-test");
+  const out = $("#tg-out");
+  btn.disabled = true;
+  out.hidden = false;
+  out.className = "notice";
+  out.textContent = "Enviando mensaje de prueba…";
+  try {
+    await api("/api/telegram/test", { method: "POST", auth: true });
+    out.classList.add("ok");
+    out.textContent = "✅ Mensaje enviado. Revisa Telegram: si te ha llegado, las alertas también te llegarán.";
+  } catch (e) {
+    out.classList.add("bad");
+    const tips = [
+      [/chat not found/i, "El bot no puede escribirte: abre tu bot en Telegram y pulsa «Iniciar/Start», o revisa TELEGRAM_CHAT_ID."],
+      [/Unauthorized|401/i, "El TELEGRAM_BOT_TOKEN es incorrecto: cópialo de nuevo de @BotFather (formato 123456:ABC…)."],
+      [/blocked/i, "Has bloqueado al bot: desbloquéalo desde su chat."],
+      [/faltan los secretos/i, "Añade los secretos en Cloudflare → Settings → Variables and Secrets (tipo Secret)."],
+    ];
+    const tip = tips.find(([re]) => re.test(e.message));
+    out.textContent = `❌ ${e.message}${tip ? `\n${tip[1]}` : ""}`;
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -431,6 +457,7 @@ async function init() {
   $("#filters").addEventListener("change", loadDeals);
   $("#scan-btn").addEventListener("click", scanNow);
   $("#new-watch").addEventListener("click", () => openForm());
+  $("#tg-test").addEventListener("click", testTelegram);
   $("#cancel-form").addEventListener("click", closeForm);
   $("#watch-form").addEventListener("submit", submitForm);
   for (const r of document.querySelectorAll('input[name="kind"]')) r.addEventListener("change", () => setKind(r.value));

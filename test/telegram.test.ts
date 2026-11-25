@@ -22,3 +22,14 @@ describe("formatDealMessage", () => {
     expect(msg).toContain("Google Flights");
   });
 });
+
+describe("sendTelegram", () => {
+  it("incluye el motivo de Telegram en el error, sin el token", async () => {
+    const { sendTelegram } = await import("../src/notify/telegram");
+    const fake = (async () =>
+      new Response(JSON.stringify({ ok: false, description: "Bad Request: chat not found" }), { status: 400 })) as unknown as typeof fetch;
+    const err = await sendTelegram("123:SECRET", "42", "hola", fake).catch((e: Error) => e);
+    expect(String(err)).toContain("chat not found");
+    expect(String(err)).not.toContain("SECRET");
+  });
+});

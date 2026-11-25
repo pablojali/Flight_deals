@@ -48,6 +48,24 @@ describe("Travelpayouts", () => {
     expect((headers as Record<string, string>)["X-Access-Token"]).toBe("tok");
   });
 
+  it("llama al fetch global sin un `this` ajeno (Workers lanza Illegal invocation)", async () => {
+    const original = globalThis.fetch;
+    let calls = 0;
+    // Imita la comprobación de Workers: falla si `this` no es globalThis/undefined.
+    globalThis.fetch = function (this: unknown) {
+      if (this !== undefined && this !== globalThis) throw new TypeError("Illegal invocation");
+      calls++;
+      return Promise.resolve(new Response(JSON.stringify({ success: true, data: [sample] })));
+    } as typeof fetch;
+    try {
+      const offers = await new TravelpayoutsSource("tok").roundTrips("MRS", "2026-12");
+      expect(offers).toHaveLength(1);
+      expect(calls).toBe(1);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
   it("propaga el código HTTP en los errores", async () => {
     const fake = (async () => new Response("", { status: 429 })) as unknown as typeof fetch;
     await expect(new TravelpayoutsSource("tok", "eur", fake).roundTrips("MRS", "2026-12")).rejects.toMatchObject({

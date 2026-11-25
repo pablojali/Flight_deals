@@ -40,7 +40,9 @@ export class TravelpayoutsSource implements FlightSource {
   constructor(
     private readonly token: string,
     private readonly currency = "eur",
-    private readonly fetchFn: typeof fetch = fetch,
+    // Envuelto en una arrow function: en Workers, llamar a `fetch` con otro `this`
+    // (p. ej. this.fetchFn(...)) lanza "Illegal invocation".
+    private readonly fetchFn: typeof fetch = (input, init) => fetch(input, init),
   ) {
     if (!token) throw new SourceError("Falta TRAVELPAYOUTS_TOKEN");
   }

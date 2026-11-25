@@ -1,0 +1,21 @@
+{
+  "name": "flight-deals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Radar de vuelos baratos desde el sur de Francia (MPL, MRS, FNI...) sobre Cloudflare Workers + D1",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply flight-deals --local",
+    "db:migrate:remote": "wrangler d1 migrations apply flight-deals --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261125.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.2",
+    "wrangler": "^4.168.0"
+  }
+}

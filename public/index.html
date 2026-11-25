@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flight Deals · Sur de Francia</title>
+  <meta name="description" content="Vuelos más baratos de lo normal desde Montpellier, Marsella, Nîmes y alrededores.">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <h1>Flight Deals</h1>
+      <p class="sub">Vuelos directos más baratos de lo normal desde el sur de Francia</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <form class="filters" id="filters" aria-label="Filtros">
+      <label>Salida
+        <select name="origin" id="origin"><option value="">Todos</option></select>
+      </label>
+      <label>Tipo de viaje
+        <select name="mode" id="mode"><option value="">Todos</option></select>
+      </label>
+      <label>Precio máx.
+        <select name="maxPrice" id="maxPrice">
+          <option value="">Sin límite</option>
+          <option value="50">50 €</option>
+          <option value="80">80 €</option>
+          <option value="120">120 €</option>
+          <option value="200">200 €</option>
+        </select>
+      </label>
+    </form>
+
+    <p class="status" id="status" role="status">Cargando…</p>
+    <section class="grid" id="deals" aria-live="polite"></section>
+  </main>
+
+  <template id="card">
+    <article class="card">
+      <div class="card-head">
+        <span class="route"></span>
+        <span class="badge mode"></span>
+      </div>
+      <p class="error-fare" hidden>¿Tarifa errónea? Reserva rápido y comprueba</p>
+      <dl class="times">
+        <div><dt>Ida</dt><dd class="out"></dd></div>
+        <div><dt>Vuelta</dt><dd class="back"></dd></div>
+      </dl>
+      <p class="hours"></p>
+      <div class="price-row">
+        <span class="price"></span>
+        <span class="normal"></span>
+      </div>
+      <div class="links">
+        <a class="btn primary buy" target="_blank" rel="noopener">Ver oferta</a>
+        <a class="btn gf" target="_blank" rel="noopener">Google Flights</a>
+      </div>
+    </article>
+  </template>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "flight-deals",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+
+  // Interfaz web estática (public/). Las rutas /api/* las atiende el Worker.
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+
+  // Crea la base con: npx wrangler d1 create flight-deals  → pega aquí el database_id.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "flight-deals",
+      "database_id": "REEMPLAZAR_CON_TU_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Cada 3 horas (minuto 17 para no coincidir con la hora en punto).
+  "triggers": { "crons": ["17 */3 * * *"] },
+
+  "vars": {
+    // Aeropuertos de salida: Montpellier, Marsella, Nîmes, Béziers, Toulon-Hyères.
+    "ORIGINS": "MPL,MRS,FNI,BZR,TLN",
+    "ORIGINS_PER_RUN": "2",
+    "HORIZON_MONTHS": "6",
+    "CURRENCY": "eur",
+    "DATA_SOURCE": "travelpayouts"
+  }
+  // Secretos (no van aquí): wrangler secret put TRAVELPAYOUTS_TOKEN | TELEGRAM_BOT_TOKEN | TELEGRAM_CHAT_ID | ADMIN_TOKEN
+}

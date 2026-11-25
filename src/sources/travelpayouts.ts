@@ -1,0 +1,103 @@
+import type { Offer } from "../types";
+import { SourceError, type FlightSource } from "./types";
+
+const ENDPOINT = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates";
+
+/** Forma de cada elemento de `data` en la respuesta de prices_for_dates. */
+export interface TpFare {
+  origin?: string;
+  destination?: string;
+  origin_airport?: string;
+  destination_airport?: string;
+  price?: number;
+  airline?: string;
+  flight_number?: string | number;
+  departure_at?: string;
+  return_at?: string;
+  transfers?: number;
+  return_transfers?: number;
+  duration_to?: number;
+  duration_back?: number;
+  link?: string;
+}
+
+interface TpResponse {
+  success?: boolean;
+  data?: TpFare[];
+  currency?: string;
+  error?: string;
+}
+
+/**
+ * Travelpayouts (Aviasales) Data API.
+ * Ojo: son precios en caché de búsquedas reales de las últimas horas/días,
+ * no cotizaciones en vivo. Sirven muy bien para detectar caídas de precio;
+ * el precio final se confirma en el enlace de compra.
+ */
+export class TravelpayoutsSource implements FlightSource {
+  readonly name = "travelpayouts";
+
+  constructor(
+    private readonly token: string,
+    private readonly currency = "eur",
+    private readonly fetchFn: typeof fetch = fetch,
+  ) {
+    if (!token) throw new SourceError("Falta TRAVELPAYOUTS_TOKEN");
+  }
+
+  async roundTrips(origin: string, month: string): Promise<Offer[]> {
+    const params = new URLSearchParams({
+      origin,
+      departure_at: month,
+      one_way: "false",
+      direct: "true",
+      currency: this.currency,
+      sorting: "price",
+      limit: "1000",
+      page: "1",
+    });
+
+    const res = await this.fetchFn(`${ENDPOINT}?${params}`, {
+      headers: { "X-Access-Token": this.token, Accept: "application/json" },
+    });
+    if (!res.ok) {
+      throw new SourceError(`Travelpayouts HTTP ${res.status} (${origin} ${month})`, res.status);
+    }
+    const body = (await res.json()) as TpResponse;
+    if (body.success === false) {
+      throw new SourceError(`Travelpayouts error: ${body.error ?? "desconocido"}`);
+    }
+    return (body.data ?? [])
+      .map((f) => normalizeTpFare(f, origin, body.currency ?? this.currency))
+      .filter((o): o is Offer => o !== null);
+  }
+}
+
+export function normalizeTpFare(f: TpFare, requestedOrigin: string, currency: string): Offer | null {
+  const destination = f.destination_airport ?? f.destination;
+  if (!destination || !f.departure_at || !f.return_at) return null;
+  if (typeof f.price !== "number" || f.price <= 0) return null;
+
+  const link = f.link
+    ? f.link.startsWith("http")
+      ? f.link
+      : `https://www.aviasales.com${f.link}`
+    : "";
+
+  return {
+    source: "travelpayouts",
+    origin: (f.origin_airport ?? f.origin ?? requestedOrigin).toUpperCase(),
+    destination: destination.toUpperCase(),
+    price: Math.round(f.price),
+    currency: currency.toUpperCase(),
+    airline: f.airline ?? "",
+    flightNumbers: f.flight_number !== undefined ? `${f.airline ?? ""}${f.flight_number}` : "",
+    departAt: f.departure_at,
+    returnAt: f.return_at,
+    durationOutMin: typeof f.duration_to === "number" ? f.duration_to : null,
+    durationBackMin: typeof f.duration_back === "number" ? f.duration_back : null,
+    transfers: f.transfers ?? 0,
+    returnTransfers: f.return_transfers ?? 0,
+    link,
+  };
+}

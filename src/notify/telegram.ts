@@ -51,3 +51,28 @@ export async function sendTelegram(
     throw new Error(`Telegram HTTP ${res.status}`);
   }
 }
+
+export function formatWatchMessage(
+  watchName: string,
+  m: { origin: string; destination: string; price: number; currency: string; airline: string; departAt: string; returnAt: string; transfers: number; returnTransfers: number; link: string },
+  reason: "under_max" | "new_low",
+  maxPrice: number | null,
+): string {
+  const head =
+    reason === "under_max"
+      ? `🔔 <b>${escapeHtml(watchName)}</b>: por debajo de ${maxPrice} ${m.currency}`
+      : `📉 <b>${escapeHtml(watchName)}</b>: nuevo precio mínimo`;
+  const stops = (n: number) => (n === 0 ? "directo" : `${n} escala${n > 1 ? "s" : ""}`);
+  const gf = googleFlightsLink(m.origin, m.destination, m.departAt, m.returnAt);
+  const links = [m.link ? `<a href="${escapeHtml(m.link)}">Ver oferta</a>` : "", `<a href="${escapeHtml(gf)}">Google Flights</a>`];
+  return [
+    head,
+    "",
+    `<b>${m.origin} → ${m.destination}</b>  ${escapeHtml(m.airline)}`,
+    `🛫 ${prettyDate(m.departAt)} ${localTime(m.departAt)} (${stops(m.transfers)})`,
+    `🛬 vuelta ${prettyDate(m.returnAt)} ${localTime(m.returnAt)} (${stops(m.returnTransfers)})`,
+    `💶 <b>${m.price} ${m.currency}</b> ida y vuelta`,
+    "",
+    links.filter(Boolean).join(" · "),
+  ].join("\n");
+}

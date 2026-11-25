@@ -10,6 +10,8 @@ Cloudflare Worker (TypeScript) + D1 + Cron + interfaz estática en `public/`.
 
 ## Estructura
 - `src/core/` lógica pura y testeada: clasificación de viaje y horas útiles (`trip.ts`), mediana/MAD (`baseline.ts`), criterio de oferta (`scoring.ts`), orquestación sin I/O (`engine.ts`).
+- `src/core/watch.ts` alertas personalizadas: validación, plan de consultas, filtro por fechas y cuándo avisar. Runner en `src/watches.ts`, SQL en `src/storage/watches.ts`.
+- Dos crons en `wrangler.jsonc`; `WATCH_CRON` en `src/index.ts` debe coincidir con el de alertas.
 - `src/sources/` adaptadores de datos (`FlightSource`). `src/storage/db.ts` todo el SQL. `src/scan.ts` el pipeline del cron.
 - Umbrales y modalidades en `src/config.ts`. Esquema en `migrations/` (nunca editar una migración ya aplicada: crear otra).
 

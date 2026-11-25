@@ -39,6 +39,8 @@ export interface Offer {
   durationOutMin: number | null;
   /** Duración del vuelo de vuelta en minutos. */
   durationBackMin: number | null;
+  /** Duración total (ida + vuelta, con escalas) en minutos, si la fuente la da. */
+  durationTotalMin?: number | null;
   transfers: number;
   returnTransfers: number;
   /** Enlace de compra/búsqueda. */

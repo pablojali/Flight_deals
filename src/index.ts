@@ -1,8 +1,14 @@
 import { MODES, parseOrigins } from "./config";
 import { googleFlightsLink } from "./core/links";
-import { runScan } from "./scan";
-import { lastRuns, listDeals, routeHistory, type DealRow } from "./storage/db";
+import { validateWatch } from "./core/watch";
+import { makeSource, runScan } from "./scan";
+import { isoDay, lastRuns, listDeals, routeHistory, type DealRow } from "./storage/db";
+import * as watches from "./storage/watches";
 import type { Env } from "./types";
+import { checkWatch, runWatches } from "./watches";
+
+/** Cron de alertas personalizadas (debe coincidir con wrangler.jsonc). */
+const WATCH_CRON = "47 */2 * * *";
 
 const IATA = /^[A-Z]{3}$/;
 
@@ -72,7 +78,70 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     return json(await runScan(env, { origins: origins.length ? origins : undefined }));
   }
 
+  if (path === "/api/watches" || path.startsWith("/api/watches/")) {
+    const denied = checkAdmin(req, env);
+    if (denied) return denied;
+    return handleWatches(req, env, path);
+  }
+
   return json({ error: "no encontrado" }, 404);
+}
+
+async function readJson(req: Request): Promise<unknown> {
+  try {
+    return await req.json();
+  } catch {
+    return null;
+  }
+}
+
+async function handleWatches(req: Request, env: Env, path: string): Promise<Response> {
+  const now = new Date();
+  if (path === "/api/watches") {
+    if (req.method === "GET") return json({ watches: await watches.listWatches(env.DB) });
+    if (req.method === "POST") {
+      const v = validateWatch(await readJson(req), isoDay(now));
+      if (!v.ok) return json({ error: v.error }, 400);
+      const id = await watches.createWatch(env.DB, v.value, now);
+      // Primera comprobación inmediata para que veas resultados al momento.
+      const w = await watches.getWatch(env.DB, id);
+      const check = await checkWatch(env, w!, makeSource(env), now);
+      return json({ watch: await watches.getWatch(env.DB, id), check }, 201);
+    }
+    return json({ error: "método no permitido" }, 405);
+  }
+
+  const m = path.match(/^\/api\/watches\/(\d+)(\/(check|history|active))?$/);
+  if (!m) return json({ error: "no encontrado" }, 404);
+  const id = Number(m[1]);
+  const action = m[3];
+  const existing = await watches.getWatch(env.DB, id);
+  if (!existing) return json({ error: "alerta no encontrada" }, 404);
+
+  if (!action && req.method === "PUT") {
+    const v = validateWatch(await readJson(req), isoDay(now));
+    if (!v.ok) return json({ error: v.error }, 400);
+    await watches.updateWatch(env.DB, id, v.value);
+    const check = await checkWatch(env, (await watches.getWatch(env.DB, id))!, makeSource(env), now);
+    return json({ watch: await watches.getWatch(env.DB, id), check });
+  }
+  if (!action && req.method === "DELETE") {
+    await watches.deleteWatch(env.DB, id);
+    return json({ ok: true });
+  }
+  if (action === "check" && req.method === "POST") {
+    const check = await checkWatch(env, existing, makeSource(env), now);
+    return json({ watch: await watches.getWatch(env.DB, id), check });
+  }
+  if (action === "active" && req.method === "POST") {
+    const body = (await readJson(req)) as { active?: unknown } | null;
+    await watches.setWatchActive(env.DB, id, body?.active === true);
+    return json({ watch: await watches.getWatch(env.DB, id) });
+  }
+  if (action === "history" && req.method === "GET") {
+    return json({ history: await watches.watchHistory(env.DB, id) });
+  }
+  return json({ error: "método no permitido" }, 405);
 }
 
 export default {
@@ -89,7 +158,8 @@ export default {
     return env.ASSETS.fetch(req);
   },
 
-  async scheduled(_controller, env, ctx): Promise<void> {
-    ctx.waitUntil(runScan(env).then(() => undefined));
+  async scheduled(controller, env, ctx): Promise<void> {
+    const job = controller.cron === WATCH_CRON ? runWatches(env) : runScan(env);
+    ctx.waitUntil(job.then(() => undefined));
   },
 } satisfies ExportedHandler<Env>;

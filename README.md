@@ -3,10 +3,16 @@
 Radar de **vuelos directos más baratos de lo normal** desde los aeropuertos del sur de Francia:
 Montpellier (MPL), Marsella (MRS), Nîmes (FNI), Béziers (BZR) y Toulon-Hyères (TLN).
 
-No busca simplemente "lo más barato": para cada ruta aprende cuál es su **precio normal** y avisa cuando
-un viaje cae claramente por debajo, siempre que el **horario sea aprovechable**.
+Dos formas de usarlo, ambas con avisos por Telegram:
 
-## Cómo decide qué es una oferta
+- **Mis alertas**: defines salida (aeropuertos locales y/o hubs como BCN, MAD, PAR), destino (o *cualquiera*),
+  fechas de ida y vuelta con ± días de margen y, opcionalmente, un precio máximo. Hay dos tipos:
+  *Europa low-cost* (solo directos) y *Larga distancia* (con escalas, p. ej. `BUE` para Argentina).
+  Se comprueban cada 2 h; avisa cuando un vuelo baja de tu máximo o, sin máximo, cuando aparece un nuevo mínimo.
+- **Radar automático**: sin configurar nada, aprende el **precio normal** de cada ruta directa y avisa cuando
+  un viaje cae claramente por debajo, siempre que el **horario sea aprovechable**.
+
+## Cómo decide el radar qué es una oferta
 
 1. **Recoge** cada 3 horas precios de ida y vuelta directos para los próximos 6 meses (Travelpayouts / Aviasales Data API).
 2. **Clasifica** cada viaje: en el día, 1 noche, 2 noches o 3-7 noches, y calcula las **horas útiles en destino**
@@ -23,9 +29,9 @@ Todos los umbrales están en [`src/config.ts`](src/config.ts).
 ## Arquitectura
 
 ```
-Cron (cada 3 h) ─▶ Worker ─▶ Travelpayouts API
+Cron radar (3 h) / alertas (2 h) ─▶ Worker ─▶ Travelpayouts API
                      │
-                     ├─▶ D1: observations (histórico) · deals (ofertas vigentes) · scan_runs (log)
+                     ├─▶ D1: observations · deals · scan_runs · watches · watch_alerts · watch_history
                      ├─▶ Telegram
                      └─▶ /api/* + interfaz estática (public/)
 ```
@@ -37,6 +43,9 @@ Cron (cada 3 h) ─▶ Worker ─▶ Travelpayouts API
 | `GET /api/config` | Aeropuertos y modalidades |
 | `POST /api/scan?origins=MPL,MRS` | Escaneo manual (requiere `Authorization: Bearer $ADMIN_TOKEN`) |
 | `GET /api/runs` | Últimas ejecuciones (requiere token) |
+| `GET/POST /api/watches` | Listar / crear alertas personalizadas (requiere token) |
+| `PUT/DELETE /api/watches/:id` | Editar / borrar una alerta (requiere token) |
+| `POST /api/watches/:id/check` · `POST /api/watches/:id/active` · `GET /api/watches/:id/history` | Comprobar ya, pausar/activar, evolución del precio |
 
 ## Desarrollo local (sin claves, con datos sintéticos)
 

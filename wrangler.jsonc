@@ -21,8 +21,8 @@
     }
   ],
 
-  // Cada 3 horas (minuto 17 para no coincidir con la hora en punto).
-  "triggers": { "crons": ["17 */3 * * *"] },
+  // Radar automático cada 3 h; alertas personalizadas cada 2 h (ver WATCH_CRON en src/index.ts).
+  "triggers": { "crons": ["17 */3 * * *", "47 */2 * * *"] },
 
   "vars": {
     // Aeropuertos de salida: Montpellier, Marsella, Nîmes, Béziers, Toulon-Hyères.

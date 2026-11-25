@@ -1,5 +1,5 @@
 import type { Offer } from "../types";
-import { SourceError, type FlightSource } from "./types";
+import { SourceError, type FlightSource, type SearchQuery } from "./types";
 
 const ENDPOINT = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates";
 
@@ -16,6 +16,7 @@ export interface TpFare {
   return_at?: string;
   transfers?: number;
   return_transfers?: number;
+  duration?: number;
   duration_to?: number;
   duration_back?: number;
   link?: string;
@@ -47,23 +48,31 @@ export class TravelpayoutsSource implements FlightSource {
     if (!token) throw new SourceError("Falta TRAVELPAYOUTS_TOKEN");
   }
 
-  async roundTrips(origin: string, month: string): Promise<Offer[]> {
+  roundTrips(origin: string, month: string): Promise<Offer[]> {
+    return this.search({ origin, departure: month, directOnly: true });
+  }
+
+  async search(q: SearchQuery): Promise<Offer[]> {
+    const { origin } = q;
+    const month = q.departure;
     const params = new URLSearchParams({
       origin,
-      departure_at: month,
+      departure_at: q.departure,
       one_way: "false",
-      direct: "true",
+      direct: String(q.directOnly),
       currency: this.currency,
       sorting: "price",
       limit: "1000",
       page: "1",
     });
+    if (q.destination) params.set("destination", q.destination);
+    if (q.return) params.set("return_at", q.return);
 
     const res = await this.fetchFn(`${ENDPOINT}?${params}`, {
       headers: { "X-Access-Token": this.token, Accept: "application/json" },
     });
     if (!res.ok) {
-      throw new SourceError(`Travelpayouts HTTP ${res.status} (${origin} ${month})`, res.status);
+      throw new SourceError(`Travelpayouts HTTP ${res.status} (${origin}${q.destination ? `→${q.destination}` : ""} ${month})`, res.status);
     }
     const body = (await res.json()) as TpResponse;
     if (body.success === false) {
@@ -98,6 +107,7 @@ export function normalizeTpFare(f: TpFare, requestedOrigin: string, currency: st
     returnAt: f.return_at,
     durationOutMin: typeof f.duration_to === "number" ? f.duration_to : null,
     durationBackMin: typeof f.duration_back === "number" ? f.duration_back : null,
+    durationTotalMin: typeof f.duration === "number" ? f.duration : null,
     transfers: f.transfers ?? 0,
     returnTransfers: f.return_transfers ?? 0,
     link,

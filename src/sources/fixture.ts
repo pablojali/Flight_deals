@@ -1,5 +1,5 @@
 import type { Offer } from "../types";
-import type { FlightSource } from "./types";
+import type { FlightSource, SearchQuery } from "./types";
 
 /**
  * Fuente sintética y determinista para desarrollo local (DATA_SOURCE=fixture).
@@ -50,6 +50,54 @@ export class FixtureSource implements FlightSource {
 
   /** `bucket` cambia el ruido entre ejecuciones (por defecto, cada 2 h). */
   constructor(private readonly bucket = Math.floor(Date.now() / 7_200_000)) {}
+
+  async search(q: SearchQuery): Promise<Offer[]> {
+    if (q.destination && !DESTS.some((d) => d.iata === q.destination)) return this.longHaul(q);
+    const month = q.departure.slice(0, 7);
+    const offers = await this.roundTrips(q.origin, month);
+    return offers.filter(
+      (o) => (!q.destination || o.destination === q.destination) && (!q.return || o.returnAt.startsWith(q.return)),
+    );
+  }
+
+  /** Larga distancia sintética: con 1 escala, estancias de 1-4 semanas. */
+  private longHaul(q: SearchQuery): Offer[] {
+    if (q.directOnly) return [];
+    const dest = q.destination!;
+    const month = q.departure.slice(0, 7);
+    const [y, m] = month.split("-").map(Number) as [number, number];
+    const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const offers: Offer[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = `${month}-${String(day).padStart(2, "0")}`;
+      for (const nights of [10, 14, 18, 21, 24, 28]) {
+        const ret = addDays(date, nights);
+        if (q.return && !ret.startsWith(q.return)) continue;
+        const seed = `${q.origin}${dest}${date}${nights}`;
+        if (hash(seed) < 0.5) continue;
+        const noise = 0.8 + hash(`${seed}${this.bucket}`) * 0.45;
+        const drop = hash(`${seed}${this.bucket}drop`) < 0.02 ? 0.6 : 1;
+        offers.push({
+          source: this.name,
+          origin: q.origin,
+          destination: dest,
+          price: Math.round(820 * noise * drop),
+          currency: "EUR",
+          airline: ["AF", "IB", "UX", "LH"][Math.floor(hash(`${seed}al`) * 4)]!,
+          flightNumbers: "",
+          departAt: `${date}T${hash(`${seed}t`) < 0.5 ? "10:05" : "17:40"}:00+01:00`,
+          returnAt: `${ret}T13:15:00-03:00`,
+          durationOutMin: 900,
+          durationBackMin: 870,
+          durationTotalMin: 1770,
+          transfers: 1,
+          returnTransfers: hash(`${seed}rt`) < 0.8 ? 1 : 2,
+          link: "",
+        });
+      }
+    }
+    return offers;
+  }
 
   async roundTrips(origin: string, month: string): Promise<Offer[]> {
     const offers: Offer[] = [];

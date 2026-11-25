@@ -4,50 +4,133 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Flight Deals · Sur de Francia</title>
-  <meta name="description" content="Vuelos más baratos de lo normal desde Montpellier, Marsella, Nîmes y alrededores.">
+  <meta name="description" content="Alertas de vuelos baratos desde Montpellier, Marsella, Nîmes y alrededores.">
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
 </head>
 <body>
   <header class="top">
-    <div class="wrap">
-      <h1>Flight Deals</h1>
-      <p class="sub">Vuelos directos más baratos de lo normal desde el sur de Francia</p>
+    <div class="wrap top-row">
+      <div>
+        <h1>Flight Deals</h1>
+        <p class="sub">Vuelos baratos desde el sur de Francia</p>
+      </div>
+      <button type="button" class="link-btn" id="logout" hidden>Cerrar sesión</button>
     </div>
+    <nav class="wrap tabs" role="tablist" aria-label="Secciones">
+      <button type="button" role="tab" class="tab" id="tab-watches" aria-controls="panel-watches" aria-selected="true">Mis alertas</button>
+      <button type="button" role="tab" class="tab" id="tab-radar" aria-controls="panel-radar" aria-selected="false">Radar automático</button>
+    </nav>
   </header>
 
   <main class="wrap">
-    <form class="filters" id="filters" aria-label="Filtros">
-      <label>Salida
-        <select name="origin" id="origin"><option value="">Todos</option></select>
-      </label>
-      <label>Tipo de viaje
-        <select name="mode" id="mode"><option value="">Todos</option></select>
-      </label>
-      <label>Precio máx.
-        <select name="maxPrice" id="maxPrice">
-          <option value="">Sin límite</option>
-          <option value="50">50 €</option>
-          <option value="80">80 €</option>
-          <option value="120">120 €</option>
-          <option value="200">200 €</option>
-        </select>
-      </label>
-    </form>
+    <!-- ───────────── MIS ALERTAS ───────────── -->
+    <section id="panel-watches" role="tabpanel" aria-labelledby="tab-watches">
+      <form class="panel login" id="login-form" hidden>
+        <p>Introduce tu contraseña de admin (<code>ADMIN_TOKEN</code>) para ver y crear alertas.</p>
+        <div class="row">
+          <input type="password" id="login-token" autocomplete="current-password" aria-label="Contraseña de admin" required>
+          <button type="submit" class="btn primary">Entrar</button>
+        </div>
+        <p class="error" id="login-error" hidden></p>
+      </form>
 
-    <details class="admin" id="admin">
-      <summary>Escanear ahora</summary>
-      <form class="admin-form" id="scan-form">
-        <label>Contraseña de admin (ADMIN_TOKEN)
-          <input type="password" name="token" id="admin-token" autocomplete="current-password" required>
+      <div id="watches-area" hidden>
+        <div class="toolbar">
+          <p class="muted" id="watches-status"></p>
+          <button type="button" class="btn primary" id="new-watch">+ Nueva alerta</button>
+        </div>
+
+        <form class="panel watch-form" id="watch-form" hidden novalidate>
+          <h2 id="form-title">Nueva alerta</h2>
+
+          <div class="segmented" role="radiogroup" aria-label="Tipo de viaje">
+            <label><input type="radio" name="kind" value="europe" checked><span>Europa low-cost<small>solo directos</small></span></label>
+            <label><input type="radio" name="kind" value="longhaul"><span>Larga distancia<small>con escalas</small></span></label>
+          </div>
+
+          <label class="field">Nombre <span class="muted">(opcional)</span>
+            <input type="text" name="name" maxlength="60" placeholder="p. ej. Navidad en Argentina">
+          </label>
+
+          <fieldset class="field">
+            <legend>Salida desde</legend>
+            <div class="chips" id="origin-chips"></div>
+            <input type="text" name="extraOrigins" placeholder="Otros aeropuertos: BCN, MAD, PAR…" aria-label="Otros aeropuertos de salida">
+          </fieldset>
+
+          <label class="field">Destino
+            <input type="text" name="destinations" id="dest-input" autocomplete="off">
+            <small class="hint" id="dest-hint"></small>
+          </label>
+
+          <div class="grid-2">
+            <fieldset class="field">
+              <legend>Ida</legend>
+              <div class="row">
+                <input type="date" name="departDate" required aria-label="Fecha de ida">
+                <select name="departFlex" aria-label="Margen de días en la ida"></select>
+              </div>
+            </fieldset>
+            <fieldset class="field">
+              <legend>Vuelta</legend>
+              <div class="row">
+                <input type="date" name="returnDate" required aria-label="Fecha de vuelta">
+                <select name="returnFlex" aria-label="Margen de días en la vuelta"></select>
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="grid-2">
+            <label class="field">Precio máximo ida y vuelta (€)
+              <input type="number" name="maxPrice" min="1" max="20000" step="1" inputmode="numeric" placeholder="Vacío = avisar de nuevos mínimos">
+            </label>
+            <label class="field" id="stops-field" hidden>Escalas máximas
+              <select name="maxStops">
+                <option value="1" selected>Hasta 1 escala</option>
+                <option value="2">Hasta 2 escalas</option>
+                <option value="0">Solo directos</option>
+              </select>
+            </label>
+          </div>
+
+          <p class="error" id="form-error" hidden></p>
+          <div class="row end">
+            <button type="button" class="btn" id="cancel-form">Cancelar</button>
+            <button type="submit" class="btn primary" id="save-form">Guardar y buscar</button>
+          </div>
+        </form>
+
+        <div class="watch-list" id="watch-list"></div>
+      </div>
+    </section>
+
+    <!-- ───────────── RADAR ───────────── -->
+    <section id="panel-radar" role="tabpanel" aria-labelledby="tab-radar" hidden>
+      <p class="muted intro">Vuelos directos que están claramente por debajo de su precio habitual. Se actualiza solo cada pocas horas.</p>
+      <form class="filters" id="filters" aria-label="Filtros">
+        <label>Salida
+          <select name="origin" id="origin"><option value="">Todos</option></select>
         </label>
-        <button type="submit" class="btn primary" id="scan-btn">Escanear MPL y MRS</button>
+        <label>Tipo de viaje
+          <select name="mode" id="mode"><option value="">Todos</option></select>
+        </label>
+        <label>Precio máx.
+          <select name="maxPrice" id="maxPrice">
+            <option value="">Sin límite</option>
+            <option value="50">50 €</option>
+            <option value="80">80 €</option>
+            <option value="120">120 €</option>
+            <option value="200">200 €</option>
+          </select>
+        </label>
+        <button type="button" class="btn" id="scan-btn">Escanear ahora</button>
       </form>
       <pre class="admin-out" id="scan-out" hidden></pre>
-    </details>
 
-    <p class="status" id="status" role="status">Cargando…</p>
-    <section class="grid" id="deals" aria-live="polite"></section>
+      <p class="muted status" id="status" role="status">Cargando…</p>
+      <section class="grid" id="deals" aria-live="polite"></section>
+    </section>
   </main>
 
   <template id="card">
@@ -56,7 +139,7 @@
         <span class="route"></span>
         <span class="badge mode"></span>
       </div>
-      <p class="error-fare" hidden>¿Tarifa errónea? Reserva rápido y comprueba</p>
+      <p class="error-fare" hidden>¿Tarifa errónea? Compruébala rápido</p>
       <dl class="times">
         <div><dt>Ida</dt><dd class="out"></dd></div>
         <div><dt>Vuelta</dt><dd class="back"></dd></div>
@@ -71,6 +154,54 @@
         <a class="btn gf" target="_blank" rel="noopener">Google Flights</a>
       </div>
     </article>
+  </template>
+
+  <template id="watch-card">
+    <article class="panel watch">
+      <div class="watch-head">
+        <div>
+          <h3 class="watch-name"></h3>
+          <p class="watch-route"></p>
+        </div>
+        <div class="badges">
+          <span class="badge kind"></span>
+          <span class="badge paused" hidden>En pausa</span>
+        </div>
+      </div>
+      <p class="watch-criteria muted"></p>
+
+      <div class="best">
+        <div class="best-main">
+          <span class="best-label muted">Más barato ahora</span>
+          <span class="best-price"></span>
+          <span class="best-detail"></span>
+        </div>
+        <svg class="spark" viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true" hidden><polyline/></svg>
+      </div>
+      <p class="spark-caption muted" hidden></p>
+
+      <ol class="results"></ol>
+      <p class="watch-empty muted" hidden></p>
+      <p class="error watch-error" hidden></p>
+
+      <div class="watch-foot">
+        <span class="checked muted"></span>
+        <div class="row">
+          <button type="button" class="btn sm" data-act="check">Comprobar ahora</button>
+          <button type="button" class="btn sm" data-act="edit">Editar</button>
+          <button type="button" class="btn sm" data-act="toggle"></button>
+          <button type="button" class="btn sm danger" data-act="delete">Borrar</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <template id="result-row">
+    <li class="result">
+      <span class="r-price"></span>
+      <span class="r-info"><span class="r-route"></span><span class="r-dates muted"></span></span>
+      <span class="r-links"><a class="r-buy" target="_blank" rel="noopener">Oferta</a><a class="r-gf" target="_blank" rel="noopener">Google</a></span>
+    </li>
   </template>
 </body>
 </html>

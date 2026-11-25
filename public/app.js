@@ -69,7 +69,47 @@ async function load() {
   }
 }
 
+const TOKEN_KEY = "fd-admin-token";
+
+function storage(op, value) {
+  try {
+    if (op === "get") return localStorage.getItem(TOKEN_KEY) ?? "";
+    if (op === "set") localStorage.setItem(TOKEN_KEY, value);
+  } catch {
+    // Sin almacenamiento disponible: simplemente no se recuerda la contraseña.
+  }
+  return "";
+}
+
+async function scanNow(ev) {
+  ev.preventDefault();
+  const token = $("#admin-token").value.trim();
+  const out = $("#scan-out");
+  const btn = $("#scan-btn");
+  btn.disabled = true;
+  out.hidden = false;
+  out.textContent = "Escaneando… (puede tardar hasta un minuto)";
+  try {
+    const res = await fetch("/api/scan?origins=MPL,MRS", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    out.textContent = JSON.stringify(body, null, 2);
+    if (res.ok) {
+      storage("set", token);
+      await load();
+    }
+  } catch (e) {
+    out.textContent = `Error de red: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 async function init() {
+  $("#admin-token").value = storage("get");
+  $("#scan-form").addEventListener("submit", scanNow);
   try {
     const res = await fetch("/api/config");
     const cfg = await res.json();

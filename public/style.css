@@ -50,6 +50,23 @@ body {
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
 }
 
+.admin {
+  margin: 8px 0; padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: 10px; background: var(--surface);
+}
+.admin summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+.admin-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 12px; }
+.admin-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); flex: 1 1 240px; }
+.admin-form input {
+  padding: 8px 10px; font: inherit; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+}
+.admin-form .btn { flex: 0 0 auto; cursor: pointer; font: inherit; font-weight: 600; }
+.admin-form .btn:disabled { opacity: 0.6; cursor: progress; }
+.admin-out {
+  margin: 12px 0 0; padding: 10px; border-radius: 8px; background: var(--bg);
+  font-size: 0.8rem; white-space: pre-wrap; word-break: break-word;
+}
 .status { color: var(--muted); font-size: 0.9rem; margin: 12px 0; }
 
 .grid {

@@ -35,6 +35,17 @@
       </label>
     </form>
 
+    <details class="admin" id="admin">
+      <summary>Escanear ahora</summary>
+      <form class="admin-form" id="scan-form">
+        <label>Contraseña de admin (ADMIN_TOKEN)
+          <input type="password" name="token" id="admin-token" autocomplete="current-password" required>
+        </label>
+        <button type="submit" class="btn primary" id="scan-btn">Escanear MPL y MRS</button>
+      </form>
+      <pre class="admin-out" id="scan-out" hidden></pre>
+    </details>
+
     <p class="status" id="status" role="status">Cargando…</p>
     <section class="grid" id="deals" aria-live="polite"></section>
   </main>
